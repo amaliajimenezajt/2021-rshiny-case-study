@@ -1,6 +1,9 @@
 library(shiny)
 library(gapminder)
 library(tidyverse)
+library(magrittr)
+
+gapminder %<>% mutate_at("year", as.factor) # mutate a year as a factor, and put the result in the gapminder
 
 gapminder_years = gapminder %>% select(year) %>% unique %>% arrange
 
@@ -9,7 +12,9 @@ dataPanel <- tabPanel("Data",
                         inputId = "selYear",
                         label = "Select the Year",
                         multiple = TRUE,
-                        choices = gapminder_years),
+                        choices = gapminder_years,
+                        selected="1952"),
+                      # verbatimTextOutput("info"),
                       tableOutput("data")
 )
 
@@ -24,13 +29,12 @@ ui <- navbarPage("shiny App",
 # Define server logic required to draw a histogram
 server <- function(input, output) { 
   gapminder_year <- reactive({gapminder %>% filter(year %in% input$selYear)}) # this is a function (reactive)
-   output$data <- renderTable(gapminder_year());
+   output$data <- renderTable(gapminder_year())
+   output$info <- renderPrint(toString(gapminder_years))
    output$plot <- renderPlot(
-     barplot(head(gapminder_year() %>% pull(pop)),
-             main=paste("Population in",input$selYear),
-             names.arg= head(gapminder_year() %>% pull(country))
-    )
-  )
+     ggplot(data=head(gapminder_year()), aes(x=country, y=pop, fill=year))
+     + geom_bar(stat="identity", position=position_dodge())
+     )
 }
 # Run the application 
 shinyApp(ui = ui, server = server)
